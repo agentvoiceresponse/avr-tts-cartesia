@@ -1,52 +1,78 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import Cartesia from 'cartesia-node';
+import { Cartesia } from '@cartesia/cartesia-js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 6009;
 
-// Initialize Cartesia client
-const cartesia = new Cartesia({
-  apiKey: process.env.CARTESIA_API_KEY,
-});
+const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY;
+if (!CARTESIA_API_KEY) {
+  console.error('[avr-tts-cartesia] FATAL: CARTESIA_API_KEY is not set');
+  process.exit(1);
+}
 
-// TTS endpoint
+const cartesia = new Cartesia({ apiKey: CARTESIA_API_KEY });
+
 app.post('/text-to-speech-stream', express.json(), async (req, res) => {
+  const uuid = req.headers['x-uuid'] || 'unknown';
+  console.log(`[avr-tts-cartesia:${uuid}] Received TTS request`);
+  
   try {
-    const { text, modelId = "sonic-english", voiceId } = req.body;
+    const { text, voiceId } = req.body;
     
     if (!text) {
+      console.error(`[avr-tts-cartesia:${uuid}] Error: Text is required`);
       return res.status(400).json({ error: 'Text is required' });
     }
     
-    // Set response headers for audio streaming
     res.set({
       'Content-Type': 'audio/l16',
-      'Transfer-Encoding': 'chunked'
+      'Transfer-Encoding': 'chunked',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
     });
     
-    // Generate speech using Cartesia
-    const audioStream = await cartesia.tts.stream({
-      modelId: modelId,
-      transcript: text,
+    const ws = await cartesia.tts.websocket();
+    const ctx = ws.context({
+      model_id: 'sonic-3',
       voice: {
-        id: voiceId || process.env.CARTESIA_VOICE_ID || "79a125e8-cd45-4c13-8a67-188112f4dd22" // Default voice
+        mode: 'id',
+        id: voiceId || process.env.CARTESIA_VOICE_ID || '79a125e8-cd45-4c13-8a67-188112f4dd22'
       },
-      outputFormat: {
-        container: "raw",
-        encoding: "pcm_f16le",
-        sampleRate: 8000
+      output_format: {
+        container: 'raw',
+        encoding: 'pcm_f16le',
+        sample_rate: 8000
       }
     });
     
-    // Pipe the audio stream to the response
-    audioStream.pipe(res);
+    ctx.send({ transcript: text, continue: false });
+    
+    req.on('close', () => {
+      ws.close();
+    });
+    
+    for await (const event of ctx.receive()) {
+      if (event.type === 'audio') {
+        res.write(Buffer.from(event.data));
+      } else if (event.type === 'done') {
+        break;
+      }
+    }
+    
+    res.end();
+    ws.close();
+    console.log(`[avr-tts-cartesia:${uuid}] TTS request completed`);
     
   } catch (error) {
-    console.error('Cartesia TTS error:', error);
-    res.status(500).json({ error: 'Failed to generate speech' });
+    console.error(`[avr-tts-cartesia:${uuid}] Error:`, error.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate speech' });
+    } else {
+      res.end();
+    }
   }
 });
 
