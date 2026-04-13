@@ -35,7 +35,8 @@ app.post('/text-to-speech-stream', express.json(), async (req, res) => {
     });
     
     const ws = await cartesia.tts.websocket();
-    const ctx = ws.context({
+    
+    const request = {
       model_id: 'sonic-3',
       voice: {
         mode: 'id',
@@ -43,22 +44,15 @@ app.post('/text-to-speech-stream', express.json(), async (req, res) => {
       },
       output_format: {
         container: 'raw',
-        encoding: 'pcm_f16le',
+        encoding: 'pcm_s16le',
         sample_rate: 8000
-      }
-    });
+      },
+      transcript: text
+    };
     
-    ctx.send({ transcript: text, continue: false });
-    
-    req.on('close', () => {
-      ws.close();
-    });
-    
-    for await (const event of ctx.receive()) {
-      if (event.type === 'audio') {
-        res.write(Buffer.from(event.data));
-      } else if (event.type === 'done') {
-        break;
+    for await (const event of ws.generate(request)) {
+      if (event.type === 'chunk') {
+        res.write(event.audio);
       }
     }
     
