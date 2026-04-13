@@ -39,7 +39,7 @@ app.post('/text-to-speech-stream', express.json(), async (req, res) => {
       model_id: 'sonic-3',
       voice: {
         mode: 'id',
-        id: voiceId || process.env.CARTESIA_VOICE_ID || '79a125e8-cd45-4c13-8a67-188112f4dd22'
+        id: voiceId || process.env.CARTESIA_VOICE_ID || '694f9389-aac1-45b6-b726-9d9369183238'
       },
       output_format: {
         container: 'raw',
