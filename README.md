@@ -36,6 +36,7 @@ Before you begin, ensure you have the following:
    ```plaintext
    CARTESIA_API_KEY=your_cartesia_api_key
    CARTESIA_VOICE_ID=optional_voice_id
+   CARTESIA_LANGUAGE=en
    PORT=6009
    ```
 
@@ -58,9 +59,15 @@ This endpoint accepts a JSON payload containing the text to be converted into sp
 - **Request Body**:
   ```json
   {
-    "text": "Hello, how can I assist you today?"
+    "text": "Hello, how can I assist you today?",
+    "voiceId": "optional_voice_id",
+    "language": "en"
   }
   ```
+
+- **Optional Parameters**:
+  - `voiceId`: Cartesia voice ID (defaults to the `CARTESIA_VOICE_ID` env var)
+  - `language`: Language code (defaults to `en` or `CARTESIA_LANGUAGE` env var)
 
 - **Response**:
   The server streams the audio as `audio/l16` with the following characteristics:

@@ -20,7 +20,8 @@ app.post('/text-to-speech-stream', express.json(), async (req, res) => {
   console.log(`[avr-tts-cartesia:${uuid}] Received TTS request`);
   
   try {
-    const { text, voiceId } = req.body;
+    const { text, voiceId, language } = req.body;
+    const lang = language || process.env.CARTESIA_LANGUAGE || 'en';
     
     if (!text) {
       console.error(`[avr-tts-cartesia:${uuid}] Error: Text is required`);
@@ -47,6 +48,7 @@ app.post('/text-to-speech-stream', express.json(), async (req, res) => {
         encoding: 'pcm_s16le',
         sample_rate: 8000
       },
+      language: lang,
       transcript: text
     };
     
