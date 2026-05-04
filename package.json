@@ -1,6 +1,6 @@
 {
   "name": "avr-tts-cartesia",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cartesia Text-to-Speech connector for Agent Voice Response",
   "main": "server.js",
   "scripts": {
