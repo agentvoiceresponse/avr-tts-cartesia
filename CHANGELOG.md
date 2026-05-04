@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.0] - 2026-05-05
+
+### Added
+- Optional `language` field on `POST /text-to-speech-stream` for per-request language override
+- `CARTESIA_LANGUAGE` environment variable (default `en`)
+
+### Changed
+- README documents `language` and `CARTESIA_LANGUAGE`
+- `.env.example` documents `CARTESIA_LANGUAGE`
+
 ## [1.0.0] - 2026-04-12
 
 ### Added
