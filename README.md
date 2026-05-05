@@ -1,113 +1,112 @@
-# Agent Voice Response with Cartesia TTS Integration
+# Agent Voice Response - Cartesia TTS Integration
 
 [![Discord](https://img.shields.io/discord/1347239846632226998?label=Discord&logo=discord)](https://discord.gg/DFTU69Hg74)
 [![GitHub Repo stars](https://img.shields.io/github/stars/agentvoiceresponse/avr-tts-cartesia?style=social)](https://github.com/agentvoiceresponse/avr-tts-cartesia)
 [![Docker Pulls](https://img.shields.io/docker/pulls/agentvoiceresponse/avr-tts-cartesia?label=Docker%20Pulls&logo=docker)](https://hub.docker.com/r/agentvoiceresponse/avr-tts-cartesia)
 [![Ko-fi](https://img.shields.io/badge/Support%20us%20on-Ko--fi-ff5e5b.svg)](https://ko-fi.com/agentvoiceresponse)
 
-This repository demonstrates the integration between **Agent Voice Response (AVR)** and **Cartesia Text-to-Speech (TTS)** API, allowing for real-time speech synthesis in an audio format suitable for telephony applications. The project is built with Node.js and leverages Cartesia for high-quality voice generation.
+## Overview
+
+This repository integrates **Agent Voice Response (AVR)** with **Cartesia Text-to-Speech (TTS)**.
+
+It exposes a streaming HTTP endpoint that converts input text into low-latency telephony-ready PCM audio using Cartesia's Sonic model.
 
 ## Features
 
-- **Real-time Text-to-Speech (TTS)**: Convert text to natural-sounding speech using Cartesia API.
-- **Streaming Audio**: The audio response is streamed back to the client in real-time using Node.js' stream capabilities, allowing for low-latency voice responses.
+- **Real-time TTS generation**: Synthesizes speech from input text through Cartesia.
+- **Streaming response**: Returns audio chunks progressively over HTTP.
+- **Telephony-ready output**: Uses `audio/l16` (`pcm_s16le`, 8kHz, mono).
+- **Request-level overrides**: Supports per-request `voiceId` and `language`.
 
-## Prerequisites
+## Configuration
 
-Before you begin, ensure you have the following:
+### Environment Variables
 
-1. **Node.js** and **npm** installed.
-2. A **Cartesia API key**.
+Copy `.env.example` to `.env` and configure:
 
-## Installation
+#### Required
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/agentvoiceresponse/avr-tts-cartesia.git
-   cd avr-tts-cartesia
-   ```
+```dotenv
+CARTESIA_API_KEY=your_cartesia_api_key_here
+```
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+#### Optional
 
-3. Create a `.env` file in the root directory and add your Cartesia API key:
-   ```plaintext
-   CARTESIA_API_KEY=your_cartesia_api_key
-   CARTESIA_VOICE_ID=optional_voice_id
-   CARTESIA_LANGUAGE=en
-   PORT=6009
-   ```
+```dotenv
+CARTESIA_VOICE_ID=694f9389-aac1-45b6-b726-9d9369183238
+CARTESIA_LANGUAGE=en
+PORT=6009
+```
 
 ## Usage
 
-To start the application:
+### Start the Application
 
 ```bash
+npm install
 npm start
 ```
 
-The application will listen on the port specified in the `.env` file (default is `6009`).
+### API Usage
 
-### API Endpoint
+- **Endpoint:** `/text-to-speech-stream`
+- **Method:** `POST`
+- **Headers:**
+  - `Content-Type: application/json`
+  - `x-uuid` (optional): request correlation id for logs
+- **Body:**
+  - `text` (required): text to synthesize
+  - `voiceId` (optional): overrides `CARTESIA_VOICE_ID`
+  - `language` (optional): overrides `CARTESIA_LANGUAGE`
 
-#### `POST /text-to-speech-stream`
-
-This endpoint accepts a JSON payload containing the text to be converted into speech. The audio is streamed back in LINEAR16 PCM format.
-
-- **Request Body**:
-  ```json
-  {
-    "text": "Hello, how can I assist you today?",
-    "voiceId": "optional_voice_id",
-    "language": "en"
-  }
-  ```
-
-- **Optional Parameters**:
-  - `voiceId`: Cartesia voice ID (defaults to the `CARTESIA_VOICE_ID` env var)
-  - `language`: Language code (defaults to `en` or `CARTESIA_LANGUAGE` env var)
-
-- **Response**:
-  The server streams the audio as `audio/l16` with the following characteristics:
-  - Mono channel
-  - 8kHz sample rate
-  - 16-bit linear PCM
-
-### Example Request
+#### Example Request
 
 ```bash
 curl -X POST http://localhost:6009/text-to-speech-stream \
-     -H "Content-Type: application/json" \
-     -d '{"text":"Hello, this is a real-time voice response!"}' \
-     --output response.raw
+  -H "Content-Type: application/json" \
+  -H "x-uuid: demo-123" \
+  -d '{"text":"Hello, this is a real-time voice response!","language":"en"}' \
+  --output response.raw
 ```
 
-## How It Works
+## API Response
 
-1. The application receives a text string through an HTTP POST request.
-2. It sends this text to Cartesia's API to synthesize the voice.
-3. The audio response is streamed back to the client.
+The endpoint streams raw audio data to the client:
 
-### Code Breakdown
+- **Content-Type:** `audio/l16`
+- **Encoding:** 16-bit linear PCM (`pcm_s16le`)
+- **Sample rate:** 8000 Hz
+- **Channels:** Mono (1 channel)
 
-- **Cartesia API Call**: The text is sent to the Cartesia API to generate speech using the provided `voice ID`.
-- **Real-time Streaming**: The audio is streamed back to the client in real-time.
+## Configuration Strategies
+
+Parameter resolution priority:
+
+1. **HTTP request body** (`voiceId`, `language`)
+2. **Environment variables** (`CARTESIA_VOICE_ID`, `CARTESIA_LANGUAGE`)
+3. **Built-in defaults** (`CARTESIA_LANGUAGE=en`, fallback voice id in code)
 
 ## Error Handling
 
-The application includes basic error handling:
-- Missing `text` in the request body results in a `400 Bad Request` response.
-- Issues with the Cartesia API result in a `500 Internal Server Error` response.
+Expected error scenarios:
+
+- Missing `CARTESIA_API_KEY` at startup exits the process with a fatal error.
+- Missing `text` in request body returns `400 Bad Request`.
+- Cartesia/API/network failures return `500 Internal Server Error`.
+- If streaming has already started, failures close the response stream.
+
+## Docker Support
+
+```bash
+docker run --rm -p 6009:6009 --env-file .env agentvoiceresponse/avr-tts-cartesia
+```
 
 ## Support & Community
 
-*   **GitHub:** [https://github.com/agentvoiceresponse](https://github.com/agentvoiceresponse) - Report issues, contribute code.
-*   **Discord:** [https://discord.gg/DFTU69Hg74](https://discord.gg/DFTU69Hg74) - Join the community discussion.
-*   **Docker Hub:** [https://hub.docker.com/u/agentvoiceresponse](https://hub.docker.com/u/agentvoiceresponse) - Find Docker images.
-*   **NPM:** [https://www.npmjs.com/~agentvoiceresponse](https://www.npmjs.com/~agentvoiceresponse) - Browse our packages.
-*   **Wiki:** [https://wiki.agentvoiceresponse.com/en/home](https://wiki.agentvoiceresponse.com/en/home) - Project documentation and guides.
+- **GitHub:** [https://github.com/agentvoiceresponse](https://github.com/agentvoiceresponse) - Report issues, contribute code.
+- **Discord:** [https://discord.gg/DFTU69Hg74](https://discord.gg/DFTU69Hg74) - Join the community discussion.
+- **Docker Hub:** [https://hub.docker.com/u/agentvoiceresponse](https://hub.docker.com/u/agentvoiceresponse) - Find Docker images.
+- **Wiki:** [https://wiki.agentvoiceresponse.com/en/home](https://wiki.agentvoiceresponse.com/en/home) - Project documentation and guides.
 
 ## Support AVR
 
@@ -120,17 +119,3 @@ Donations do not provide access to features, services, or special benefits, and 
 ## License
 
 MIT License - see the [LICENSE](LICENSE.md) file for details.
-
-## Docker Usage
-
-You can also run the service using Docker:
-
-```bash
-docker run -p 6009:6009 -e CARTESIA_API_KEY=your_api_key agentvoiceresponse/avr-tts-cartesia
-```
-
-Or using docker-compose:
-
-```bash
-docker-compose up avr-tts-cartesia
-```

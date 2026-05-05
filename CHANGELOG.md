@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1] - 2026-05-05
+
+### Changed
+- Reworked `README.md` to align with AVR readme conventions and current connector behavior
+- Clarified configuration priority, request contract, streaming response format, and Docker usage
+
 ## [1.1.0] - 2026-05-05
 
 ### Added
